@@ -11,6 +11,7 @@ this is a tool for data collection in movies download sites.
 
 
 import sys
+import getopt
 import requests
 
 
@@ -83,9 +84,8 @@ class YesFilmes:
 			})
 
 
-	def parse(self):
+	def parse(self, pages):
 
-		pages = 10
 		response = requests.get(self.url)
 		
 		if response.status_code == 200:
@@ -110,10 +110,24 @@ class YesFilmes:
 			exit()
 
 
-if __name__ == '__main__':
-	#for arg in sys.argv[1:]:
-	#	print arg
+def main(argv):
+	
+	try:
+		opts, args  = getopt.getopt(argv,'p:t', ['pages=', 'torrent'])
+	except getopt.GetoptError:
+		print 'usage'
+		exit()
+
+	pages=1
+	for opt, arg in opts:
+		print opt
 
 	yesfilmes = YesFilmes()
-	yesfilmes.parse()
+	yesfilmes.parse(pages)
+
+
+if __name__ == '__main__':
+	main(sys.argv[1:])
+
+	
 
