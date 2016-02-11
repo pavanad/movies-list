@@ -1,4 +1,4 @@
-#!usr/bin/python
+#!/usr/bin/python
 # -*- coding: utf-8 -*-
 
 """
@@ -26,16 +26,49 @@ def get_total_pages(line, index):
 	return int(link.split('/')[-1])
 
 
+def is_digit(arg):
+	if arg.isdigit():
+		return int(arg)
+	else:
+		print 'Movies list: arg must be a number'
+		exit()
+
+
+def usage():
+	print '\nUsage:'
+	print '\n    python movies_list.py [<options>]'
+	print '\nOptions:'
+	print '\n-p, --pages \t Set number of pages (default=1)'
+	print '-a, --audio \t Set audio quality [0-10] (default=10)'
+	print '-v, --video \t Set video quality [0-10] (default=10)'
+	print '-t, --torrent \t Search movies for download torrent (default=False)\n'
+
+
 class YesFilmes:
 
 	url = ''
 	total_pages = 0
 	movies_list = []
+	pages = 1
+	audio = 10
+	video = 10
+	torrent = False
 
 	def __init__(self):
 		self.url = 'http://yesfilmes.org/'
 		self.total_pages = 0
 
+	def set_pages(self, pages):
+		self.pages = pages
+
+	def set_audio(self, audio):
+		self.audio = audio
+
+	def set_video(self, video):
+		self.video = video
+
+	def set_torrent(self, torrent):
+		self.torrent = torrent
 
 	def get_content_page(self, response, first_page=False):
 
@@ -56,8 +89,7 @@ class YesFilmes:
 			if post != -1:
 				end = line.find('</a>', post + 15)
 				title.append(line[post + 15:end])
-						
-
+					
 			# get quality
 			q = line.find('Qualidade:')
 			if q != -1:
@@ -76,15 +108,15 @@ class YesFilmes:
 				video.append(int(line[video_quality + 20:end].strip(' ')))
 
 		for (t,q,a,v) in zip(title, quality, audio, video):
-			self.movies_list.append({
-				'title': t, 
-				'quality': q, 
-				'audio': a,
-				'video': v
-			})
+			if a == self.audio and v == self.video:
+				self.movies_list.append({
+					'title': t, 
+					'quality': q, 
+					'audio': a,
+					'video': v
+				})
 
-
-	def parse(self, pages):
+	def parse(self):
 
 		response = requests.get(self.url)
 		
@@ -93,7 +125,7 @@ class YesFilmes:
 			print '\nMovies list: starting search movies...'
 			self.get_content_page(response, True)
 
-			for i in range(pages+1)[2:]:
+			for i in range(self.pages+1)[2:]:
 				response = requests.get(self.url + '/page/' + str(i))
 				self.get_content_page(response)
 
@@ -113,17 +145,30 @@ class YesFilmes:
 def main(argv):
 	
 	try:
-		opts, args  = getopt.getopt(argv,'p:t', ['pages=', 'torrent'])
+		opts, args  = getopt.getopt(argv,'p:a:v:th', ['pages=', 'audio=', 'video=', 'torrent', 'help'])
 	except getopt.GetoptError:
-		print 'usage'
+		usage()
 		exit()
 
-	pages=1
-	for opt, arg in opts:
-		print opt
-
 	yesfilmes = YesFilmes()
-	yesfilmes.parse(pages)
+
+	for opt, arg in opts:
+		if opt in ('-p', '--pages'):
+			pages = is_digit(arg)	
+			yesfilmes.set_pages(pages)		
+		elif opt in ('-a', '--audio'):
+			audio = is_digit(arg)
+			yesfilmes.set_audio(audio)
+		elif opt in ('-v', '--video'):
+			video = is_digit(arg)
+			yesfilmes.set_video(video)
+		elif opt in ('-t', '--torrent'):
+			yesfilmes.set_torrent(True)
+		elif opt in ('-h', '--help'):
+			usage()
+			exit()
+
+	yesfilmes.parse()
 
 
 if __name__ == '__main__':
