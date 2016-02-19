@@ -15,8 +15,8 @@ import getopt
 import requests
 
 
-def get_href(line, index):
-	start = line.find('href="', index) + 6
+def get_href(line, index=0):	
+	start = line.find('href="',index) + 6
 	end = line.find('"', start)
 	return line[start:end]
 
@@ -54,21 +54,40 @@ class YesFilmes:
 	video = 10
 	torrent = False
 
+
 	def __init__(self):
 		self.url = 'http://yesfilmes.org/'
 		self.total_pages = 0
 
+
 	def set_pages(self, pages):
 		self.pages = pages
+
 
 	def set_audio(self, audio):
 		self.audio = audio
 
+
 	def set_video(self, video):
 		self.video = video
 
+
 	def set_torrent(self, torrent):
 		self.torrent = torrent
+
+
+	def get_link_torrent(self, link):
+
+		response = requests.get(link)		
+		if response.status_code == 200:
+		
+			content = response.content.split('\n')
+			for line in content:
+				torrent = line.find('title="Torrent"')
+				if torrent != -1:
+					return get_href(line)
+		return None
+
 
 	def get_content_page(self, response, first_page=False):
 
@@ -78,11 +97,25 @@ class YesFilmes:
 		quality = []
 		audio = []
 		video = []
+		more = []
+		torrent = []
 		for line in content:
 			if first_page:
 				last = line.find('class="last"')
 				if last != -1:
 					self.total_pages = get_total_pages(line, last)
+
+			# get link download
+			more_link = line.find('class="more-link"')
+			if more_link != -1:	
+				link = get_href(line)			
+				more.append(link)
+
+				if self.torrent:
+					link_torrent = self.get_link_torrent(link)
+					torrent.append(link_torrent)
+				else:
+					torrent.append('')		
 
 			# get post title
 			post = line.find('rel="bookmark"')
@@ -107,14 +140,18 @@ class YesFilmes:
 				end = line.find('</p>', video_quality + 20)
 				video.append(int(line[video_quality + 20:end].strip(' ')))
 
-		for (t,q,a,v) in zip(title, quality, audio, video):
+
+		for (t,q,a,v,m,tt) in zip(title, quality, audio, video, more, torrent):
 			if a == self.audio and v == self.video:
 				self.movies_list.append({
 					'title': t, 
 					'quality': q, 
 					'audio': a,
-					'video': v
+					'video': v,
+					'more': m,
+					'torrent': tt
 				})
+
 
 	def parse(self):
 
@@ -134,8 +171,12 @@ class YesFilmes:
 				print item['quality']
 				print 'Audio: ' + str(item['audio'])
 				print 'Video: ' + str(item['video'])
+				print 'More: ' + str(item['more'])
 
-			print '\ntotal pages: %d \n' % self.total_pages
+				if self.torrent: 
+					print 'Torrent: ' + str(item['torrent'])
+
+			print '\nSearch for %d of %d pages \n' % (self.pages, self.total_pages)
 
 		else:
 			print 'Movies list: could not open url (status code: %s)' % str(response.status_code)
